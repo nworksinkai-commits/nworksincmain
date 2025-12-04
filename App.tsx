@@ -5,12 +5,17 @@ import { About } from './components/About';
 import { Services } from './components/Services';
 import { CartSidebar } from './components/Cart';
 import { Footer } from './components/Footer';
-import { CatalogItem, CartItem, User } from './types';
+import { AuthModal } from './components/AuthModal';
+import { CatalogItem, CartItem, User, Category, ItemType } from './types';
+import { CATALOG } from './constants'; // Keep for initial/fallback state
+import { supabase } from './lib/supabase';
 
 const App: React.FC = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>(CATALOG);
   
   // Theme State
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
@@ -28,6 +33,61 @@ const App: React.FC = () => {
     document.documentElement.classList.add(initialTheme);
   }, []);
 
+  // Fetch Catalog from Supabase
+  useEffect(() => {
+    const fetchCatalog = async () => {
+      const { data, error } = await supabase
+        .from('catalog')
+        .select('*');
+
+      if (error) {
+        console.error('Error fetching catalog:', error);
+      } else if (data && data.length > 0) {
+        // Map Supabase response to CatalogItem type ensuring Enums match
+        const mappedItems: CatalogItem[] = data.map((item: any) => ({
+          ...item,
+          // Ensure enums are cast correctly from string
+          category: item.category as Category,
+          type: item.type as ItemType
+        }));
+        setCatalogItems(mappedItems);
+      }
+    };
+
+    fetchCatalog();
+  }, []);
+
+  // Handle Authentication Session
+  useEffect(() => {
+    // Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser({
+          name: session.user.user_metadata.full_name || session.user.email?.split('@')[0] || 'User',
+          email: session.user.email || '',
+          isMember: session.user.user_metadata.is_member || false
+        });
+      }
+    });
+
+    // Listen for changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({
+          name: session.user.user_metadata.full_name || session.user.email?.split('@')[0] || 'User',
+          email: session.user.email || '',
+          isMember: session.user.user_metadata.is_member || false
+        });
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
@@ -36,16 +96,12 @@ const App: React.FC = () => {
     document.documentElement.classList.add(newTheme);
   };
 
-  const toggleLogin = () => {
+  const handleLoginAction = async () => {
     if (user) {
+      await supabase.auth.signOut();
       setUser(null);
     } else {
-      // Mock login
-      setUser({
-        name: 'Alex Doe',
-        email: 'alex@example.com',
-        isMember: true
-      });
+      setIsAuthModalOpen(true);
     }
   };
 
@@ -73,7 +129,7 @@ const App: React.FC = () => {
         toggleCart={() => setIsCartOpen(true)} 
         cartCount={cartCount}
         user={user}
-        toggleLogin={toggleLogin}
+        toggleLogin={handleLoginAction}
         theme={theme}
         toggleTheme={toggleTheme}
       />
@@ -92,6 +148,7 @@ const App: React.FC = () => {
         <Services 
           addToCart={addToCart} 
           isMember={user?.isMember || false} 
+          items={catalogItems}
         />
       </main>
 
@@ -103,6 +160,11 @@ const App: React.FC = () => {
         items={cart} 
         removeItem={removeFromCart}
         isMember={user?.isMember || false}
+      />
+
+      <AuthModal 
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
       />
 
     </div>

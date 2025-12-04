@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
-import { CATALOG } from '../constants';
 import { Category, CatalogItem, ItemType } from '../types';
 import { ShoppingCart, FileText, Sparkles, Search, X } from 'lucide-react';
 
 interface ServicesProps {
   addToCart: (item: CatalogItem) => void;
   isMember: boolean;
+  items: CatalogItem[];
 }
 
-export const Services: React.FC<ServicesProps> = ({ addToCart, isMember }) => {
+export const Services: React.FC<ServicesProps> = ({ addToCart, isMember, items }) => {
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const categories = ['All', ...Object.values(Category)];
 
   // Filter Logic
-  const filteredItems = CATALOG.filter(item => {
+  const filteredItems = items.filter(item => {
     const matchesCategory = activeCategory === 'All' || item.category === activeCategory;
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = item.title.toLowerCase().includes(searchLower) || 

@@ -52,7 +52,7 @@ export const CATALOG: CatalogItem[] = [
     type: ItemType.SERVICE,
     category: Category.DESIGN,
     price: 0,
-    image: 'https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?q=80&w=1000&auto=format&fit=crop'
+    image: 'https://images.unsplash.com/photo-1554774853-719586f8c277?q=80&w=1000&auto=format&fit=crop'
   },
   {
     id: 'c2',
